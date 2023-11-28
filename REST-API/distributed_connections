@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+import pprint, json
+
+site = {
+
+    "alias" : {
+        "site_id_3",
+        "site_id_4",
+    },
+
+   "site_id": {
+        "site_id_3",
+        "site_id_4",
+       
+   } 
+}
+
+
+
+
+#for i in site['site_id']:
+#    print(i)
+
+
+

@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+import pprint
+import requests
+import json
+
+####
+
+import distributed_connections
+
+##
+
+HOST_NAME = "localhost:5029"
+SITE_NAME = "zachattack"
+API_URL = f"http://{HOST_NAME}/{SITE_NAME}/check_mk/api/1.0"
+
+USERNAME = "cmkadmin"
+PASSWORD = "cmk1"
+
+session = requests.session()
+session.headers['Authorization'] = f"Bearer {USERNAME} {PASSWORD}"
+session.headers['Accept'] = 'application/json'
+
+###
+
+site_count = 0
+
+## list comprehension baby
+site_old = distributed_connections.site['site']
+site = [x for x in site_old]
+
+alias_old = distributed_connections.site['alias']
+alias =  [x for x in alias_old]
+
+print(len(alias_old))
+
+
+url_old = distributed_connections.site["url_prefix"]
+url =  [x for x in url_old]
+
+ip_domain_old = distributed_connections.site["ip_domain"]
+ip_domain = [x for x in ip_domain_old]
+
+
+
+for i in alias_old:
+    if site_count <= len(alias_old):
+        
+        print("Create Checkmk Site: %s" % site[site_count])
+        
+        resp = session.post(
+            f"{API_URL}/domain-types/site_connection/collections/all",
+            headers={
+                "Content-Type": 'application/json',  # (required) A header specifying which type of content is in the request/response body.
+            },
+            json={
+                "site_config": {
+                    "basic_settings": {
+                        "alias": alias[site_count],
+                        "site_id": site[site_count],
+                    },
+                    "status_connection": {
+                        "connection": {
+                            "socket_type": "tcp",
+                            "host": ip_domain[site_count],
+                            "port": 6568,
+                            "encrypted": True,
+                            "verify": True,
+                        },
+                        "proxy": {
+                            "use_livestatus_daemon": "with_proxy",
+                            "global_settings": True,
+                        },
+                        "connect_timeout": 2,
+                        "persistent_connection": False,
+                        "url_prefix": url[site_count] ,
+                        "status_host": {
+                            "status_host_set": "disabled"
+                        },
+                        "disable_in_status_gui": False,
+                    },
+                    "configuration_connection": {
+                        "enable_replication": True,
+                        "url_of_remote_site": url[site_count],
+                        "disable_remote_configuration": True,
+                        "ignore_tls_errors": False,
+                        "direct_login_to_web_gui_allowed": True,
+                        "user_sync": {
+                            "sync_with_ldap_connections": "all"
+                        },
+                        "replicate_event_console": True,
+                        "replicate_extensions": True,
+                    },
+
+                    "secret": "cmk"
+                }
+            },)
+        site_count+=1    
+
+print(resp.content)
+
+# print(alias[site_count]),
+# print(site[site_count]),
+# print(url[site_count])
+# print(ip_domain[site_count])
+
+
+
+
+if resp.status_code == 200:
+    pprint.pprint(resp.json())
+elif resp.status_code == 204:
+    print("Done")
+else:
+    raise RuntimeError(pprint.pformat(resp.json()))
+
+    
+
+
+
+
+
+
+
+
+
