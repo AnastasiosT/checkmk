@@ -1,4 +1,5 @@
 #!/bin/bash
+#THANKS TO ZACHATTACK
 cpu_utilization=$(top -bn1 | grep "Cpu(s)" | awk '
 
 {printf "%.2f", $2 + $4}
