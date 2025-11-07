@@ -1,4 +1,4 @@
-his script is designed for distributed monitoring environments. When executed on the central site, it will:
+This script is designed for distributed monitoring environments. When executed on the central site, it will:
 Query the local central site for its hosts and services
 Automatically discover all remote sites connected to the central instance
 Connect to each remote site via SSL and collect their statistics
