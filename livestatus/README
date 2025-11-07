@@ -1,0 +1,36 @@
+his script is designed for distributed monitoring environments. When executed on the central site, it will:
+Query the local central site for its hosts and services
+Automatically discover all remote sites connected to the central instance
+Connect to each remote site via SSL and collect their statistics
+Aggregate and display the total count across all sites in your distributed setup
+Important: Remote sites must be configured with SSL/encrypted Livestatus connections (if thats not the case, let me know and I can adapt the script again). The script will automatically retrieve connection details from your CheckMK configuration.
+
+
+The Usage of the script + an example output
+
+root@vagrant:/omd/sites/provider# ./licensecount.py  --host localhost --site provider --user cmkadmin --pass cmk
+======================================================================
+ CheckMK Sites Statistics (Hosts & Services)
+======================================================================
+
+Site: provider
+   Type: Local
+   SUCCESS: Hosts=57 | Services=621
+
+Site: provider3
+   Type: Remote (192.168.123.112:6559 SSL)
+   SUCCESS: Hosts=10 | Services=20
+
+Site: v240
+   Type: Remote (192.168.121.1:6573 SSL)
+   SUCCESS: Hosts=1 | Services=2
+
+======================================================================
+ Summary
+======================================================================
+Sites: 3 (Local: 1, Remote: 2)
+Total Hosts: 68
+Total Services: 643
+======================================================================
+
+
