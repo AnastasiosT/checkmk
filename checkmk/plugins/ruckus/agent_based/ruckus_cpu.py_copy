@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+# Copyright (C) 2019 Checkmk GmbH - License: GNU General Public License v2
+# This file is part of Checkmk (https://checkmk.com). It is subject to the terms and
+# conditions defined in the file COPYING, which is part of this source code package.
+
+from cmk.agent_based.v2 import (
+    CheckPlugin,
+    CheckResult,
+    DiscoveryResult,
+    Metric,
+    Result,
+    Service,
+    SimpleSNMPSection,
+    SNMPTree,
+    State,
+    StringTable,
+    startswith,
+)
+
+def parse_ruckus_cpu(string_table: StringTable) -> dict:
+    """Parse the CPU utilization data"""
+    parsed = {}
+    if string_table:
+        # Expecting one row with 4 values: 1s, 5s, 60s, 300s averages
+        cpu_data = string_table[0]
+        if len(cpu_data) >= 4:
+            parsed = {
+                "cpu_1s": int(cpu_data[0]) if cpu_data[0].isdigit() else 0,
+                "cpu_5s": int(cpu_data[1]) if cpu_data[1].isdigit() else 0,
+                "cpu_60s": int(cpu_data[2]) if cpu_data[2].isdigit() else 0,
+                "cpu_300s": int(cpu_data[3]) if cpu_data[3].isdigit() else 0,
+            }
+    return parsed
+
+def inventory_ruckus_cpu(section: dict) -> DiscoveryResult:
+    """Discover CPU service if data is available"""
+    if section:
+        yield Service()
+
+def check_ruckus_cpu(params, section: dict) -> CheckResult:
+    """Check CPU utilization levels"""
+    if not section:
+        yield Result(state=State.UNKNOWN, summary="No CPU data available")
+        return
+    
+    # Get CPU values
+    cpu_1s = section.get("cpu_1s", 0)
+    cpu_5s = section.get("cpu_5s", 0)
+    cpu_60s = section.get("cpu_60s", 0)
+    cpu_300s = section.get("cpu_300s", 0)
+    
+    # Use 5-second average as primary metric for status determination
+    primary_cpu = cpu_5s
+    
+    # Determine state based on CPU utilization
+    if primary_cpu >= 90:
+        state = State.CRIT
+        summary = f"CPU utilization critical: {primary_cpu}%"
+    elif primary_cpu >= 80:
+        state = State.WARN  
+        summary = f"CPU utilization warning: {primary_cpu}%"
+    else:
+        state = State.OK
+        summary = f"CPU utilization: {primary_cpu}%"
+    
+    # Add detailed information about all averages
+    details = f"1s: {cpu_1s}%, 5s: {cpu_5s}%, 60s: {cpu_60s}%, 300s: {cpu_300s}%"
+    
+    yield Result(
+        state=state,
+        summary=summary,
+        details=details
+    )
+    
+    # Provide metrics for graphing
+    yield Metric("cpu_utilization_1s", cpu_1s, boundaries=(0, 100))
+    yield Metric("cpu_utilization_5s", cpu_5s, boundaries=(0, 100))  
+    yield Metric("cpu_utilization_60s", cpu_60s, boundaries=(0, 100))
+    yield Metric("cpu_utilization_300s", cpu_300s, boundaries=(0, 100))
+
+# SNMP section definition
+snmp_section_ruckus_cpu = SimpleSNMPSection(
+    name="ruckus_cpu",
+    detect=startswith(".1.3.6.1.2.1.1.1.0", "Ruckus Wireless, Inc. Stacking System"),
+    fetch=SNMPTree(
+        base=".1.3.6.1.4.1.1991.1.1.2.11.1.1.5.1.1",
+        oids=[
+            "1",    # 1 Second Average
+            "5",    # 5 Second Average  
+            "60",   # 60 Second Average
+            "300",  # 300 Second Average
+        ],
+    ),
+    parse_function=parse_ruckus_cpu,
+)
+
+# Check plugin definition
+check_plugin_ruckus_cpu = CheckPlugin(
+    name="ruckus_cpu",
+    service_name="CPU Utilization",
+    discovery_function=inventory_ruckus_cpu,
+    check_function=check_ruckus_cpu,
+    check_default_parameters = {"warn": 80, "crit":90,}, 
+    check_ruleset_name="cpu_utilization",
+)
